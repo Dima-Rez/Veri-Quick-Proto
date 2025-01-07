@@ -1,0 +1,13 @@
+[theme]
+base = "dark"  # Sets dark mode as the default theme
+
+
+[server]
+headless = true
+enableCORS = false
+
+[layout]
+wideMode = true  # Enables wide mode
+
+[app]
+layout = 'wide'
