@@ -100,6 +100,9 @@ st.set_page_config(layout="wide", page_title="Veriquick✅", page_icon="")
 st.title('Veriquick✅')
 st.write(" Let's make verification paperless")
 
+image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&st=9s4evfrw&dl=0"
+st.image(image_url, caption="Instructions", use_column_width=True)
+
 
 uploaded_files = st.file_uploader(" Upload any docuemt to get started", type="pdf", accept_multiple_files=True)
 
@@ -109,6 +112,10 @@ if uploaded_files:
     for uploaded_file in uploaded_files:
         file_content = uploaded_file.read().decode("utf-8", errors="ignore")
         file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
+
+         if files_metadata:
+          # Hide the initial image by re-running the app when files are uploaded
+        st.image(image_url, caption="Instructions", use_column_width=True, visible=False)
         
         if file_url:
             metadata = extract_metadata(file_content, file_url)
