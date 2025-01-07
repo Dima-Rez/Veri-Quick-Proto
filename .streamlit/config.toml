@@ -9,5 +9,5 @@ enableCORS = false
 [layout]
 wideMode = true  # Enables wide mode
 
-[app]
-layout = 'wide'
+[ui]
+wideMode = true
