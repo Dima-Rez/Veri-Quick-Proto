@@ -102,7 +102,7 @@ st.write(" Let's make verification paperless")
 
 uploaded_files = st.file_uploader(" Upload any docuemt to get started", type="pdf", accept_multiple_files=True)
 
-image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&st=9s4evfrw&dl=0"
+image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&st=zlg2jjn9&dl=0"
 st.image(image_url, caption="Instructions", use_column_width=True)
 
 
