@@ -115,7 +115,7 @@ if uploaded_files:
 
          if files_metadata:
           # Hide the initial image by re-running the app when files are uploaded
-        st.image(image_url, caption="Instructions", use_column_width=True, visible=False)
+            st.image(image_url, caption="Instructions", use_column_width=True, visible=False)
         
         if file_url:
             metadata = extract_metadata(file_content, file_url)
