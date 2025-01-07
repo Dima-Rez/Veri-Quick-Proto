@@ -98,6 +98,7 @@ def generate_qr_code_with_metadata(files_metadata):
 # Main Streamlit App
 st.title("Veriquick✅")
 st.write(" Let's make verification paperless")
+st.set_page_config(layout='wide')
 
 uploaded_files = st.file_uploader(" Upload any docuemt to get started", type="pdf", accept_multiple_files=True)
 
