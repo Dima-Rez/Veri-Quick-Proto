@@ -96,8 +96,8 @@ def generate_qr_code_with_metadata(files_metadata):
     return img
 
 # Main Streamlit App
-st.set_page_config(layout="wide", page_title="Veriquick", page_icon="✅")
-st.title('Veriquick')
+st.set_page_config(layout="wide", page_title="Veriquick✅", page_icon="✅")
+st.title('Veriquick✅')
 st.write(" Let's make verification paperless")
 
 
