@@ -96,10 +96,10 @@ def generate_qr_code_with_metadata(files_metadata):
     return img
 
 # Main Streamlit App
-st.title("Veriquick - Aadhaar and PAN Document Scanner")
-st.write("Upload documents to detect Aadhaar and PAN numbers and generate QR codes.")
+st.title("Veriquick✅")
+st.write(" Let's make verification paperless")
 
-uploaded_files = st.file_uploader("Upload PDF documents", type="pdf", accept_multiple_files=True)
+uploaded_files = st.file_uploader(" Upload any docuemt to get started", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
     files_metadata = []
