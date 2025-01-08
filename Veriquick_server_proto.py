@@ -1,12 +1,3 @@
-"""
-Creating a web Server to make sure the EDV's function 
-Process:
-1. File upload condition  
-2. Data storage and execution with the links 
-3. Retrieve the file link in the QR format to make the application redirect 
-to the created link 
-"""
-
 import streamlit as st
 import dropbox
 import json
@@ -98,12 +89,14 @@ def generate_qr_code_with_metadata(files_metadata):
 # Main Streamlit App
 st.set_page_config(layout="wide", page_title="Veriquick✅", page_icon="")
 st.title('Veriquick✅')
-st.write(" Let's make verification paperless")
+st.write("Let's make verification paperless")
 
-uploaded_files = st.file_uploader("Upload any document to get started", type="pdf", accept_multiple_files=True) 
-image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&raw=1
-st.image(image_url, caption="Instructions", use_column_width=True)
+uploaded_files = st.file_uploader("Upload any document to get started", type="pdf", accept_multiple_files=True)
+image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&raw=1"
 
+# Only show the instructions image if no files are uploaded
+if not uploaded_files:
+    st.image(image_url, caption="Instructions", use_column_width=True)
 
 if uploaded_files:
     files_metadata = []
@@ -112,13 +105,10 @@ if uploaded_files:
         file_content = uploaded_file.read().decode("utf-8", errors="ignore")
         file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
 
-        if files_metadata:
-          # Hide the initial image by re-running the app when files are uploaded
-           st.image(image_url, caption="Instructions", use_column_width=True, visible=True)
-        
-        if not upload_files:
-            st.image(image_url, caption="Instructions", use_coloumn_width=True)
-             
+        if file_url:
+            metadata = extract_metadata(file_content, file_url)
+            files_metadata.append(metadata)
+
     # Generate and display QR code if files are uploaded
     if files_metadata:
         qr_image = generate_qr_code_with_metadata(files_metadata)
