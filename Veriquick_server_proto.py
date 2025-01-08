@@ -101,7 +101,8 @@ st.title('Veriquick✅')
 st.write(" Let's make verification paperless")
 
 uploaded_files = st.file_uploader("Upload any document to get started", type="pdf", accept_multiple_files=True) 
-image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&raw=1st.image(image_url, caption="Instructions", use_column_width=True)
+image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&raw=1
+st.image(image_url, caption="Instructions", use_column_width=True)
 
 
 if uploaded_files:
