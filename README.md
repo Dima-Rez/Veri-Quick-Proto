@@ -5,8 +5,8 @@
 
 
 
-### Note You can use this code only after crediting the legal owner
-+ For any queries contact
+### Note: If you are using this code for any purpose make sure to credit the author of the applications
+> For any queries contact
 ## Dave
 +[mail](dimareznokov@gmail.com)
 +[linkedin](https://www.linkedin.com/in/devarana/)
