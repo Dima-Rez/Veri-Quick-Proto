@@ -3,9 +3,9 @@
 # Veriquick  
 ### *let's make it quick*
 
-+ **Note** You can use this code only after crediting the legal owner
+**Note** You can use this code only after crediting the legal owner
 + For any queries contact
-### Dave
+## Dave
 [mail](dimareznokov@gmail.com)
 [linkedin](https://www.linkedin.com/in/devarana/)
 
