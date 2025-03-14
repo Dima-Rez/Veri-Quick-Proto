@@ -1,5 +1,5 @@
-![Image](https://github.com/user-attachments/assets/f49221cc-e6e4-49c4-a900-4c2859163e0a)
-
+![](https://github.com/user-attachments/assets/792990f5-d14b-4748-aa5f-172783c17faa)
 
 # Veriquick
 ### *let's make it quick*
+
