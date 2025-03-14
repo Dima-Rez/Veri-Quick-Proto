@@ -1,8 +1,13 @@
 ![](https://github.com/user-attachments/assets/792990f5-d14b-4748-aa5f-172783c17faa)
 
-# Veriquick Open Source module 
+# Veriquick  
 ### *let's make it quick*
 
++ **Note** You can use this code only after crediting the legal owner
++ For any queries contact
+### Dave
+[mail](dimareznokov@gmail.com)
+[linkedin](https://www.linkedin.com/in/devarana/)
 
 Veriquick is **an advanced document verification system** designed to **authorize and digitalize documentation**, making administrative processes seamless and paperless. With its instant QR-based retrieval and automated verification system, Veriquick ensures that **sensitive documents like Aadhaar and PAN are authenticated within seconds**, eliminating manual paperwork and reducing processing time.
 
