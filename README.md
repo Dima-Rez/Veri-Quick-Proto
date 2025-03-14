@@ -1,2 +1,2 @@
-# Veriquick
+# **Veriquick**
 # *let's make it quick*
