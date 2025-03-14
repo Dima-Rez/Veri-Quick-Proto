@@ -7,9 +7,9 @@
 
 ### Note: If you are using this code for any purpose make sure to credit the author of the applications
 > For any queries contact
-## Dave
-+[mail](dimareznokov@gmail.com)
-+[linkedin](https://www.linkedin.com/in/devarana/)
+> ## Dave
+> + [mail](dimareznokov@gmail.com)
+> + [linkedin](https://www.linkedin.com/in/devarana/)
 
 Veriquick is **an advanced document verification system** designed to **authorize and digitalize documentation**, making administrative processes seamless and paperless. With its instant QR-based retrieval and automated verification system, Veriquick ensures that **sensitive documents like Aadhaar and PAN are authenticated within seconds**, eliminating manual paperwork and reducing processing time.
 
