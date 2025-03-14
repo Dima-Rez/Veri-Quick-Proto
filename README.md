@@ -5,7 +5,7 @@
 
 
 
-### Note: If you are using this code for any purpose make sure to credit the author of the applications
+### Note: If you are using this code for any purpose make sure to credit the author of the application
 > For any queries contact
 > ## Dave
 > + [mail](dimareznokov@gmail.com)
