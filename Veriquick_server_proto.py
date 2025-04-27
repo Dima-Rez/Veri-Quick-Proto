@@ -1,3 +1,12 @@
+"""
+Creating a web Server to make sure the EDV's function 
+Process:
+1. File upload condition  
+2. Data storage and execution with the links 
+3. Retrieve the file link in the QR format to make the application redirect 
+to the created link 
+"""
+
 import streamlit as st
 import dropbox
 import json
@@ -87,16 +96,10 @@ def generate_qr_code_with_metadata(files_metadata):
     return img
 
 # Main Streamlit App
-st.set_page_config(layout="wide", page_title="Veriquick✅", page_icon="")
-st.title('Veriquick✅')
-st.write("Let's make verification paperless")
+st.title("Veriquick - Aadhaar and PAN Document Scanner")
+st.write("Upload documents to detect Aadhaar and PAN numbers and generate QR codes.")
 
-uploaded_files = st.file_uploader("Upload any document to get started", type="pdf", accept_multiple_files=True)
-image_url = "https://www.dropbox.com/scl/fi/lwyb9ivag1tztu15jkh6p/instructions-1.png?rlkey=m80qnz5lhrsgx7ir0b3wz8omb&raw=1"
-
-# Only show the instructions image if no files are uploaded
-if not uploaded_files:
-    st.image(image_url, caption="Instructions", use_column_width=True)
+uploaded_files = st.file_uploader("Upload PDF documents", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
     files_metadata = []
@@ -104,7 +107,7 @@ if uploaded_files:
     for uploaded_file in uploaded_files:
         file_content = uploaded_file.read().decode("utf-8", errors="ignore")
         file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
-
+        
         if file_url:
             metadata = extract_metadata(file_content, file_url)
             files_metadata.append(metadata)
