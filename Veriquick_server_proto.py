@@ -1,36 +1,39 @@
 """
-Paperless Document Verification 
-by D.Rana
-Compatible when files are uploaded in Google Drive and similar applications 
-V1.1.3
-The code is not for open-source purposes solely
+Creating a web Server to make sure the EDV's function 
+Process:
+1. File upload condition  
+2. Data storage and execution with the links 
+3. Retrieve the file link in the QR format to make the application redirect 
+to the created link 
 """
 
-# Importing necessary modules
+#import modules 
+
 import streamlit as st
 import dropbox
-import qrcode
-from PIL import Image
 import json
-import io
-import requests
 import re
 from datetime import datetime
-from PyPDF2 import PdfReader
+import qrcode
+from io import BytesIO
+import requests
 
-# Homepage setup
-st.set_page_config(page_title="🗄️ Veriquick File Uploader")
-st.header("Veriquick ✅")
-st.subheader("Upload files to store and retrieve Dropbox links and QR codes")
-
-# Get secrets from Streamlit secrets management
+# Dropbox credentials
 ACCESS_TOKEN = st.secrets["dropbox"]["access_token"]
 REFRESH_TOKEN = st.secrets["dropbox"]["refresh_token"]
 CLIENT_ID = st.secrets["dropbox"]["client_id"]
 CLIENT_SECRET = st.secrets["dropbox"]["client_secret"]
 
+#support
+mail = "dimareznokov@gmail.com"
+ph = '+91 9304211754'
+
 # Initialize Dropbox client
 dbx = dropbox.Dropbox(ACCESS_TOKEN)
+
+# Aadhaar and PAN regex patterns
+AADHAAR_REGEX = r"\b\d{4} \d{4} \d{4}\b"
+PAN_REGEX = r"\b[A-Z]{5}\d{4}[A-Z]{1}\b"
 
 # Function to refresh access token
 def refresh_access_token():
@@ -48,107 +51,99 @@ def refresh_access_token():
         dbx = dropbox.Dropbox(ACCESS_TOKEN)
         return True
     else:
-        st.error(f"Failed to refresh access token: {response.json()}")
+        st.error("We're facing some issues connecting to our servers\
+                Please contact the site owner at {mail},{ph}")  
         return False
 
-# Function to extract text from PDF
-def extract_text_from_pdf(uploaded_file):
-    pdf_reader = PdfReader(uploaded_file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text() or ""
-    return text
-
-# Function to identify document type automatically
-def identify_document_type(content):
-    if "Aadhaar" in content or re.search(r"\b\d{4}\s\d{4}\s\d{4}\b", content):
-        return "Aadhaar"
-    elif re.search(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", content):
-        return "PAN"
-    else:
-        return "Other"
-
-# Function to upload a file to Dropbox and get the link
-def upload_to_dropbox(uploadedfile, filename):
+# Function to upload a file to Dropbox and get a public link
+def upload_file_to_dropbox(file, filename):
     global dbx
-    # Append timestamp to filename to avoid duplicates
-    unique_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-    file_path = f"/Veriquick/{unique_filename}"
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    dropbox_path = f"/Veriquick/{timestamp}_{filename}"
 
     try:
-        # Upload file to Dropbox
-        dbx.files_upload(uploadedfile.getbuffer().tobytes(), file_path)
-        
-        # Check if a shared link already exists
-        existing_links = dbx.sharing_list_shared_links(file_path).links
-        if existing_links:
-            file_link = existing_links[0].url.replace('?dl=0', '?dl=1')
-        else:
-            # Create a new shared link if none exists
-            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(file_path)
-            file_link = shared_link_metadata.url.replace('?dl=0', '?dl=1')
-        
-        return file_link
+        dbx.files_upload(file.getvalue(), dropbox_path)
+        shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path)
+        return shared_link_metadata.url.replace("?dl=0", "?dl=1")
 
     except dropbox.exceptions.AuthError:
-        st.warning("Access token expired. Refreshing token...")
+        pass
         if refresh_access_token():
-            return upload_to_dropbox(uploadedfile, filename)
+            return upload_file_to_dropbox(file, filename)
         else:
-            st.error("Failed to refresh access token. Please check your credentials.")
+            st.error("Error 101 we are unable to fetch file in our servers.")
             return None
     except dropbox.exceptions.ApiError as e:
-        st.error(f"Dropbox API error: {e}")
+        st.error(f" We're facing some isses connecting to Dropbox API error: {e}, Please contact the author at {mail},{ph}")
         return None
 
-# Function to generate QR code with metadata
+# Function to extract Aadhaar and PAN metadata from content
+'Highlight: Force Decorate'
+def extract_metadata(content, file_url):
+    metadata = {"document_url": file_url, "document_type": "Other", "aadhaar_numbers": [], "pan_numbers": []}
+
+    aadhaar_numbers = re.findall(AADHAAR_REGEX, content)
+    pan_numbers = re.findall(PAN_REGEX, content)
+
+    if aadhaar_numbers:
+        metadata["document_type"] = "Aadhaar"
+        metadata["aadhaar_numbers"] = aadhaar_numbers
+    elif pan_numbers:
+        metadata["document_type"] = "PAN"
+        metadata["pan_numbers"] = pan_numbers
+
+    return metadata
+
+# Function to generate QR code from metadata
 def generate_qr_code_with_metadata(files_metadata):
-    metadata = {"files": files_metadata}
-    qr_data = json.dumps(metadata)
-    
+    qr_data = json.dumps({"files": files_metadata})
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(qr_data)
     qr.make(fit=True)
-    img = qr.make_image(fill='black', back_color='white')
-    
+    img = qr.make_image(fill="black", back_color="white")
     return img
 
-# Function to convert PIL Image to bytes
-def pil_image_to_bytes(img):
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    return buf.getvalue()
+# Main Streamlit App
+st.title("Veriquick")
+st.write("Let's do it quick")
 
-# Upload section
-uploaded_files = st.file_uploader("Upload multiple documents (Aadhaar, PAN, etc.)", type=['pdf'], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload PDF documents", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
     files_metadata = []
-    
+    errors_list = []
+
     for uploaded_file in uploaded_files:
-        # Extract text content from PDF for document identification
-        try:
-            content = extract_text_from_pdf(uploaded_file)
-        except Exception as e:
-            st.error(f"Error extracting text from PDF: {e}")
-            content = ""
+        file_content = uploaded_file.read().decode("utf-8", errors="ignore")
+        file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
         
-        document_type = identify_document_type(content)
-        file_link = upload_to_dropbox(uploaded_file, uploaded_file.name)
+        if file_url:
+            try:
+                metadata = extract_metadata(file_content, file_url)
+                files_metadata.append(metadata)
+            except Exception as e:
+                errors_list.append(e)
+                st.error(f"Error processing file {uploaded_file.name}: {e}\
+                         Please contact the developer at {mail},{ph}")
         
-        if file_link:
-            # Add metadata with extracted Aadhaar numbers if document type is Aadhaar
-            files_metadata.append({
-                "document_url": file_link,
-                "document_type": document_type,
-                "aadhaar_numbers": re.findall(r"\b\d{4}\s\d{4}\s\d{4}\b", content) if document_type == "Aadhaar" else []
-            })
-    
-    # Generate QR code if metadata is available
+    # Generate and display QR code if files are uploaded
     if files_metadata:
         qr_image = generate_qr_code_with_metadata(files_metadata)
-        qr_image_bytes = pil_image_to_bytes(qr_image)
-        
-        # Display and allow downloading the QR code
-        st.image(qr_image_bytes, caption="QR code with metadata for uploaded files")
-        st.download_button(label="Download QR code", data=qr_image_bytes, file_name="qr_code.png", mime="image/png")
+        qr_buffer = BytesIO()
+        qr_image.save(qr_buffer, format="PNG")
+        qr_buffer.seek(0)
+
+        st.image(qr_buffer, use_column_width=True)
+        st.download_button(label="Download QR ", data=qr_buffer, file_name="document_metadata_qr.png", mime="image/png")
+        st.json(files_metadata)  # Display metadata as JSON for reference
+
+
+
+
+
+
+
+
+
+
+
