@@ -24,7 +24,7 @@ import json
 import os
 import time
 from PyQt5.QtWidgets import (QApplication, QLabel, QVBoxLayout, QWidget, 
-                            QHBoxLayout, QPushButton, QStatusBar, QMessageBox)
+                            QHBoxLayout, QPushButton, QStatusBar, QMessageBox, QScrollArea, QFrame)
 from PyQt5.QtGui import QImage, QPixmap, QIcon, QFont
 from PyQt5.QtCore import QTimer, Qt
 
@@ -36,6 +36,8 @@ SUCCESS_SOUND = os.path.join(SOUND_DIR, "document_loaded.mp3")
 AADHAAR_DETECTED_SOUND = os.path.join(SOUND_DIR, "aadhar_detected.mp3")
 PAN_VERIFICATION_SOUND = os.path.join(SOUND_DIR, "pan_detected.mp3")
 MANUAL_VERIFICATION_SOUND = os.path.join(SOUND_DIR, "verification_unsuccessful.mp3")
+ERROR_SCANNING = os.path.join(SOUND_DIR,"Scan_error.mp3")
+
 
 # Fallback to absolute paths if relative paths don't exist
 if not os.path.exists(SOUND_DIR):
@@ -43,6 +45,7 @@ if not os.path.exists(SOUND_DIR):
     AADHAAR_DETECTED_SOUND = "D:\Python\Main Python Directory\Mega projects\Prototype assets\Aadhar_detected.mp3"
     PAN_VERIFICATION_SOUND = "D:\Python\Main Python Directory\Mega projects\Prototype assets\PAN_DETECTED.mp3"
     MANUAL_VERIFICATION_SOUND = "D:\Python\Main Python Directory\Mega projects\Prototype assets\verfication unsuccessful manual checking neede.mp3"
+    ERROR_SCANNING = "D:\Python\Main Python Directory\Mega projects\Prototype assets\Scan_error.mp3"
 
 class QRScannerApp(QWidget):
     def __init__(self):
@@ -55,9 +58,10 @@ class QRScannerApp(QWidget):
         self.qr_data = None
         self.browser_opened = False
         self.last_scan_time = 0
-        self.scan_cooldown = 5  # seconds between scans
+        self.scan_cooldown = 10  # seconds between scans
         self.sound_queue = []  # Queue for sounds to play
         self.is_playing_sound = False
+        self.last_result = None  # Store last scan result
         
         # Main timer for camera updates
         self.timer = QTimer()
@@ -71,37 +75,55 @@ class QRScannerApp(QWidget):
 
     def initUI(self):
         self.setWindowTitle("Veriquick - Document Scanner")
-        self.setWindowIcon(QIcon("D:\\Python\\Main Python Directory\\Mega Project Prototype 1\\Prototype assets\\qricon.ico"))
-        self.setMinimumSize(800, 600)
+        self.setWindowIcon(QIcon("Yellow and Black Modern Media Logo.ico"))
+        self.setMinimumSize(1000, 600)
 
-        # Main layout
-        main_layout = QVBoxLayout()
-        
-        # Camera view
+        # Main horizontal layout
+        main_layout = QHBoxLayout()
+
+        # Camera view (left)
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(self.image_label)
-        
-        # Status display
+        self.image_label.setMinimumSize(600, 500)
+        self.image_label.setStyleSheet("background: #f5f7fa; border-radius: 18px; margin: 20px;")
+        main_layout.addWidget(self.image_label, 2)
+
+        # Result area (right, scrollable)
+        self.result_area = QScrollArea()
+        self.result_area.setWidgetResizable(True)
+        self.result_area.setMinimumWidth(400)
+        self.result_area.setStyleSheet('''
+            QScrollArea { background: #fff; border-radius: 18px; margin: 40px 20px 40px 0; }
+        ''')
+        self.result_widget = QWidget()
+        self.result_layout = QVBoxLayout()
+        self.result_layout.setAlignment(Qt.AlignTop)
+        self.result_widget.setLayout(self.result_layout)
+        self.result_area.setWidget(self.result_widget)
+        self.result_area.hide()  # Hide until scan
+        main_layout.addWidget(self.result_area, 1)
+
+        # Main vertical layout (for status bar)
+        outer_layout = QVBoxLayout()
+        outer_layout.addLayout(main_layout)
+
+        # Status bar at the bottom
         self.status_label = QLabel("Ready to scan QR codes")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setFont(QFont("Arial", 12, QFont.Bold))
-        main_layout.addWidget(self.status_label)
-        
-        # Control buttons
-        button_layout = QHBoxLayout()
-        
-        self.reset_button = QPushButton("Reset Scanner")
+        self.status_label.setFont(QFont("Arial", 11, QFont.Bold))
+        self.status_label.setStyleSheet("background: #e3f2fd; color: #1976d2; padding: 8px; border-radius: 8px; margin: 8px 32px 8px 32px;")
+        outer_layout.addWidget(self.status_label)
+
+        # Reset button below status bar
+        self.reset_button = QPushButton("Reset for Next Scan")
+        self.reset_button.setStyleSheet('''
+            QPushButton { background: #43a047; color: #fff; border-radius: 8px; padding: 10px 24px; font-size: 15px; margin-bottom: 16px; }
+            QPushButton:hover { background: #388e3c; }
+        ''')
         self.reset_button.clicked.connect(self.reset_for_next_scan)
-        button_layout.addWidget(self.reset_button)
-        
-        self.quit_button = QPushButton("Quit")
-        self.quit_button.clicked.connect(self.close)
-        button_layout.addWidget(self.quit_button)
-        
-        main_layout.addLayout(button_layout)
-        
-        self.setLayout(main_layout)
+        outer_layout.addWidget(self.reset_button, alignment=Qt.AlignCenter)
+
+        self.setLayout(outer_layout)
         self.show()
 
     def initialize_camera(self):
@@ -151,111 +173,147 @@ class QRScannerApp(QWidget):
             self.status_label.setText("Error reading frame from camera")
             return
 
-        # Check if we're in cooldown period
         current_time = time.time()
-        if current_time - self.last_scan_time < self.scan_cooldown:
-            # Show cooldown status
-            remaining = round(self.scan_cooldown - (current_time - self.last_scan_time))
-            self.status_label.setText(f"Scanning paused. Ready in {remaining} seconds...")
-        else:
-            self.status_label.setText("Ready to scan QR codes")
 
-        # Decode QR code from frame
-        decoded_objs = pyzbar.decode(frame)
-        
-        # Draw QR detection indicator
+        # --- Preprocessing for complex QR codes ---
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Adaptive thresholding for better binarization
+        processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                          cv2.THRESH_BINARY, 11, 2)
+        # Contrast enhancement (CLAHE)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        processed = clahe.apply(processed)
+        # Use processed image for decoding
+        decoded_objs = pyzbar.decode(processed)
         if decoded_objs:
-            # Process each detected QR code
-            for obj in decoded_objs:
-                data = obj.data.decode('utf-8')
-                x, y, w, h = obj.rect
-                
-                # Draw a green rectangle around the QR code
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
-                
-                # Add text label
-                cv2.putText(frame, "QR Code Detected", (x, y - 10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                
-                # Only process if it's a new QR code and not in cooldown
-                if (not self.browser_opened and 
-                    (self.qr_data is None or self.qr_data != data) and
-                    current_time - self.last_scan_time >= self.scan_cooldown):
-                    
-                    self.qr_data = data
-                    self.last_scan_time = current_time
-                    self.status_label.setText("Processing QR code...")
-                    
-                    # Process in a separate thread to keep UI responsive
-                    QTimer.singleShot(0, lambda: self.process_qr_code(data))
+            # Only process the first detected QR code per frame
+            obj = decoded_objs[0]
+            data = obj.data.decode('utf-8')
+            x, y, w, h = obj.rect
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+            cv2.putText(frame, "QR Code Detected", (x, y - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            if (not self.browser_opened and 
+                (self.qr_data is None or self.qr_data != data) and
+                current_time - self.last_scan_time >= self.scan_cooldown):  # Use the scan_cooldown variable
+                self.qr_data = data
+                self.last_scan_time = current_time
+                self.status_label.setText("Processing QR code...")
+                QTimer.singleShot(0, lambda: self.process_qr_code(data))
         else:
-            # No QR code detected
             self.qr_data = None
 
-        # Update display with video frame
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_frame.shape
         bytes_per_line = ch * w
         qt_img = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        
-        # Scale image to fit the label while maintaining aspect ratio
         pixmap = QPixmap.fromImage(qt_img)
         scaled_pixmap = pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.image_label.setPixmap(scaled_pixmap)
 
+    def clear_layout(self, layout):
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
     def process_qr_code(self, qr_data):
-        """Process the QR code data in a separate thread to keep UI responsive."""
         try:
             document_metadata = self.process_qr_data(qr_data)
-            
             if document_metadata:
-                self.browser_opened = True  # Prevent re-opening on repeat scans
-                aadhaar_detected = False
-                pan_detected = False
-                
-                # Queue sounds to play in sequence
-                self.sound_queue = []  # Clear any existing sounds
-                
-                # Add success sound to queue
-                self.sound_queue.append(SUCCESS_SOUND)
-                
-                # Open each document URL in the QR code metadata
-                for doc in document_metadata.get("files", []):
+                self.browser_opened = True
+                self.sound_queue = []
+                files = document_metadata.get("files", [])
+                self.clear_layout(self.result_layout)
+                # Show all documents in a scrollable card/list
+                aadhaar_found = False
+                pan_found = False
+                for doc in files:
                     doc_type = doc.get("document_type", "Unknown")
                     doc_url = doc.get("document_url", "")
-                    aadhaar_numbers = doc.get("aadhaar_numbers", [])
-                    pan_numbers = doc.get("pan_numbers", [])
+                    file_name = doc.get("file_name", "Document")
                     
-                    # Open the document URL in the browser
+                    # Open the document URL in the web browser immediately
                     if doc_url:
-                        webbrowser.open(doc_url)
-                        self.status_label.setText(f"Opening document: {doc_type}")
+                        try:
+                            webbrowser.open(doc_url, new=2)  # new=2 opens in a new tab
+                            print(f"Opening URL: {doc_url}")
+                        except Exception as e:
+                            print(f"Error opening browser: {e}")
                     
-                    # Queue document-specific sounds
-                    if doc_type == "Aadhaar" and aadhaar_numbers and not aadhaar_detected:
-                        aadhaar_detected = True
-                        self.sound_queue.append(AADHAAR_DETECTED_SOUND)
-                    elif doc_type == "PAN" and pan_numbers and not pan_detected:
-                        pan_detected = True
-                        self.sound_queue.append(PAN_VERIFICATION_SOUND)
-                
-                # Queue manual verification sound if needed
-                if not aadhaar_detected and not pan_detected:
+                    card = QFrame()
+                    card.setStyleSheet('''
+                        QFrame { background: #f7f9fa; border-radius: 14px; border: 1px solid #e0e0e0; margin-bottom: 18px; }
+                    ''')
+                    card_layout = QVBoxLayout()
+                    title = QLabel(f"<b>{file_name}</b>")
+                    title.setFont(QFont("Arial", 13, QFont.Bold))
+                    card_layout.addWidget(title)
+                    type_label = QLabel(f"Type: <b>{doc_type}</b>")
+                    type_label.setFont(QFont("Arial", 11))
+                    card_layout.addWidget(type_label)
+                    link_label = QLabel(f'<a href="{doc_url}">{doc_url}</a>')
+                    link_label.setFont(QFont("Arial", 10))
+                    link_label.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+                    link_label.setOpenExternalLinks(True)
+                    card_layout.addWidget(link_label)
+                    open_btn = QPushButton("Open Link")
+                    open_btn.setStyleSheet('''
+                        QPushButton { background: #1976d2; color: #fff; border-radius: 8px; padding: 6px 16px; font-size: 12px; }
+                        QPushButton:hover { background: #1565c0; }
+                    ''')
+                    open_btn.clicked.connect(lambda checked, url=doc_url: webbrowser.open(url))
+                    card_layout.addWidget(open_btn)
+                    card.setLayout(card_layout)
+                    self.result_layout.addWidget(card)
+                    # Sound logic
+                    if not aadhaar_found and doc_type == "Aadhaar" and doc.get("aadhaar_numbers", []):
+                        aadhaar_found = True
+                    if not pan_found and doc_type == "PAN" and doc.get("pan_numbers", []):
+                        pan_found = True
+                self.result_area.show()
+                self.status_label.setText("Scan successful! Ready for next user.")
+                # Play only one sound per scan
+                if aadhaar_found:
+                    self.sound_queue.append(AADHAAR_DETECTED_SOUND)
+                elif pan_found:
+                    self.sound_queue.append(PAN_VERIFICATION_SOUND)
+                else:
                     self.sound_queue.append(MANUAL_VERIFICATION_SOUND)
-                
-                # Start playing sounds
                 self.process_sound_queue()
-                
-                # Reset for next scan after cooldown
-                QTimer.singleShot(self.scan_cooldown * 1000, self.reset_for_next_scan)
+                QTimer.singleShot(1200, self.reset_for_next_scan)  # Fast reset
             else:
-                self.status_label.setText("Invalid QR code data")
-                QTimer.singleShot(3000, lambda: self.status_label.setText("Ready to scan QR codes"))
-                
+                # Show a user-friendly error card with the raw QR data
+                self.clear_layout(self.result_layout)
+                error_card = QFrame()
+                error_card.setStyleSheet('''
+                    QFrame { background: #fff3e0; border-radius: 14px; border: 1px solid #ffb300; margin-bottom: 18px; }
+                ''')
+                error_layout = QVBoxLayout()
+                error_title = QLabel("<b>Unsupported QR Code Format</b>")
+                error_title.setFont(QFont("Arial", 13, QFont.Bold))
+                error_title.setStyleSheet("color: #e65100;")
+                error_layout.addWidget(error_title)
+                error_msg = QLabel("This QR code is not supported by Veriquick. Raw data:")
+                error_msg.setFont(QFont("Arial", 10))
+                error_layout.addWidget(error_msg)
+                raw_data_box = QLabel(f"<pre style='font-size:10px; color:#333;'>{qr_data}</pre>")
+                raw_data_box.setTextInteractionFlags(Qt.TextSelectableByMouse)
+                raw_data_box.setStyleSheet("background: #fff8e1; border-radius: 8px; padding: 8px; margin-top: 6px;")
+                error_layout.addWidget(raw_data_box)
+                error_card.setLayout(error_layout)
+                self.result_layout.addWidget(error_card)
+                self.result_area.show()
+                self.status_label.setText("Unsupported QR code scanned.")
+                self.sound_queue = [ERROR_SCANNING]
+                self.process_sound_queue()
+                QTimer.singleShot(2000, self.reset_for_next_scan)
         except Exception as e:
             self.status_label.setText(f"Error processing QR code: {str(e)}")
             print(f"Error processing QR code: {e}")
-            QTimer.singleShot(3000, lambda: self.status_label.setText("Ready to scan QR codes"))
+            self.sound_queue = [ERROR_SCANNING]
+            self.process_sound_queue()
+            QTimer.singleShot(1500, lambda: self.status_label.setText("Ready to scan QR codes"))
 
     def process_qr_data(self, qr_data):
         """Parse and validate QR code data."""
@@ -306,10 +364,17 @@ class QRScannerApp(QWidget):
             print(f"Error playing sound {sound_path}: {e}")
             self.is_playing_sound = False
 
+    def copy_link_to_clipboard(self):
+        if self.last_result:
+            QApplication.clipboard().setText(self.last_result)
+            self.status_label.setText("Link copied to clipboard!")
+            QTimer.singleShot(2000, lambda: self.status_label.setText("Ready to scan QR codes"))
+
     def reset_for_next_scan(self):
-        """Reset necessary flags to allow for the next scan."""
         self.qr_data = None
         self.browser_opened = False
+        self.result_area.hide()
+        self.last_result = None
         self.status_label.setText("Ready to scan QR codes")
         print("Scanner reset, ready for next scan")
 
