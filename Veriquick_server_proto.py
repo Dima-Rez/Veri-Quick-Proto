@@ -23,6 +23,42 @@ from PIL import Image
 import pdf2image
 import io
 
+# Configure Streamlit page settings
+st.set_page_config(
+    page_title="Veriquick",
+    page_icon="🔍",
+    layout="wide",  # This enables wide mode by default
+    initial_sidebar_state="expanded"
+)
+
+# Enable dark mode by default using custom CSS
+st.markdown("""
+    <style>
+        /* Dark mode styles */
+        .stApp {
+            background-color: #0E1117;
+            color: #FAFAFA;
+        }
+        
+        /* Improve button visibility in dark mode */
+        .stButton>button {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        /* Style file uploader */
+        .uploadedFile {
+            background-color: #262730;
+            border: 1px solid #30333D;
+        }
+        
+        /* Style success/info/warning messages */
+        .stSuccess, .stInfo, .stWarning {
+            background-color: #262730;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Dropbox credentials
 ACCESS_TOKEN = st.secrets["dropbox"]["access_token"]
 REFRESH_TOKEN = st.secrets["dropbox"]["refresh_token"]
@@ -308,7 +344,6 @@ if uploaded_files:
 
         st.image(qr_buffer, use_column_width=True)
         st.download_button(label="Download QR ", data=qr_buffer, file_name="document_metadata_qr.png", mime="image/png")
-        st.json(files_metadata)  # Display metadata as JSON for reference
 
 
 
