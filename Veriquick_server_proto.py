@@ -27,7 +27,6 @@ import io
 st.set_page_config(
     page_title="Veriquick",
     page_icon="🔍",
-    layout="wide",  # This enables wide mode by default
     initial_sidebar_state="expanded"
 )
 
@@ -55,6 +54,13 @@ st.markdown("""
         /* Style success/info/warning messages */
         .stSuccess, .stInfo, .stWarning {
             background-color: #262730;
+        }
+        
+        /* Make the app use wide mode */
+        .main .block-container {
+            max-width: 100%;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
     </style>
 """, unsafe_allow_html=True)
