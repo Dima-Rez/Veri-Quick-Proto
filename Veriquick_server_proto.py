@@ -22,6 +22,7 @@ import pytesseract
 from PIL import Image
 import pdf2image
 import io
+import uuid
 
 # Configure Streamlit page settings
 st.set_page_config(
@@ -33,34 +34,44 @@ st.set_page_config(
 # Enable dark mode by default using custom CSS
 st.markdown("""
     <style>
-        /* Dark mode styles */
-        .stApp {
-            background-color: #0E1117;
+        body, .stApp {
+            background: linear-gradient(135deg, #232526 0%, #414345 100%);
             color: #FAFAFA;
         }
-        
-        /* Improve button visibility in dark mode */
-        .stButton>button {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        /* Style file uploader */
-        .uploadedFile {
-            background-color: #262730;
-            border: 1px solid #30333D;
-        }
-        
-        /* Style success/info/warning messages */
-        .stSuccess, .stInfo, .stWarning {
-            background-color: #262730;
-        }
-        
-        /* Make the app use wide mode */
         .main .block-container {
-            max-width: 100%;
-            padding-left: 2rem;
-            padding-right: 2rem;
+            max-width: 900px;
+            margin: auto;
+            padding: 2rem 2rem 2rem 2rem;
+        }
+        .card {
+            background: #fff;
+            color: #232526;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(30, 34, 90, 0.08);
+            padding: 2rem 2rem 1.5rem 2rem;
+            margin-bottom: 2rem;
+        }
+        .card-title {
+            color: #1976d2;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .card-link {
+            color: #1565c0;
+            font-size: 1.1rem;
+            word-break: break-all;
+        }
+        .stButton>button {
+            background-color: #1976d2;
+            color: white;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            padding: 0.5rem 1.5rem;
+        }
+        .stFileUploader {
+            background: #262730;
+            border-radius: 12px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -296,60 +307,68 @@ def verify_aadhaar_authenticity(aadhaar_number):
 
 # Main Streamlit App
 st.title("Veriquick")
-st.write("Let's do it quick")
+st.markdown("<h4 style='color:#90caf9;'>Upload your PDF documents for instant verification and secure sharing.</h4>", unsafe_allow_html=True)
 
 uploaded_files = st.file_uploader("Upload PDF documents", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
     files_metadata = []
     errors_list = []
+    # If multiple files, upload to a folder
+    if len(uploaded_files) > 1:
+        file_links = upload_file_to_dropbox(uploaded_files)
+        for file, link in zip(uploaded_files, file_links):
+            text_content, ocr_text = extract_text_from_pdf(file)
+            metadata = extract_metadata(text_content, link["url"], ocr_text)
+            metadata["file_name"] = file.name
+            files_metadata.append(metadata)
+    else:
+        # Single file logic (keep old logic for single file)
+        uploaded_file = uploaded_files[0]
+        text_content, ocr_text = extract_text_from_pdf(uploaded_file)
+        file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
+        if file_url:
+            metadata = extract_metadata(text_content, file_url, ocr_text)
+            metadata["file_name"] = uploaded_file.name
+            files_metadata.append(metadata)
 
-    for uploaded_file in uploaded_files:
-        if uploaded_file.type == "application/pdf":
-            # Extract text using both methods
-            text_content, ocr_text = extract_text_from_pdf(uploaded_file)
-            
-            # Upload to Dropbox
-            file_url = upload_file_to_dropbox(uploaded_file, uploaded_file.name)
-            
-            if file_url:
-                try:
-                    # Extract metadata using both text content and OCR text
-                    metadata = extract_metadata(text_content, file_url, ocr_text)
-                    
-                    # Additional verification for Aadhaar numbers
-                    if metadata["document_type"] == "Aadhaar":
-                        verified_aadhaar = []
-                        for aadhaar in metadata["aadhaar_numbers"]:
-                            if verify_aadhaar_authenticity(aadhaar):
-                                verified_aadhaar.append(aadhaar)
-                        metadata["aadhaar_numbers"] = verified_aadhaar
-                        metadata["verification_status"] = "verified" if verified_aadhaar else "failed"
-                    
-                    files_metadata.append(metadata)
-                    
-                    # Show processing status
-                    st.success(f"Successfully processed {uploaded_file.name}")
-                    if metadata["verification_status"] == "verified":
-                        st.info("Document verified successfully!")
-                    else:
-                        st.warning("Document verification failed!")
-                        
-                except Exception as e:
-                    errors_list.append(e)
-                    st.error(f"Error processing file {uploaded_file.name}: {str(e)}")
-        else:
-            st.error(f"Unsupported file type: {uploaded_file.type}. Please upload PDF files only.")
+    # Show cards for each file
+    for meta in files_metadata:
+        st.markdown(f"""
+        <div class='card'>
+            <div class='card-title'>{meta['file_name']}</div>
+            <div>Type: <b>{meta['document_type']}</b></div>
+            <div>Status: <b>{meta['verification_status']}</b></div>
+            <div class='card-link'>Link: <a href='{meta['document_url']}' target='_blank'>{meta['document_url']}</a></div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Generate and display QR code if files are uploaded
+    # Generate and display QR code for all files
     if files_metadata:
         qr_image = generate_qr_code_with_metadata(files_metadata)
         qr_buffer = BytesIO()
         qr_image.save(qr_buffer, format="PNG")
         qr_buffer.seek(0)
-
         st.image(qr_buffer, use_column_width=True)
-        st.download_button(label="Download QR ", data=qr_buffer, file_name="document_metadata_qr.png", mime="image/png")
+        st.download_button(label="Download QR for all documents", data=qr_buffer, file_name="document_metadata_qr.png", mime="image/png")
+
+# Function to upload multiple files to Dropbox folder and get their public links
+def upload_files_to_dropbox(files):
+    global dbx
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    folder_id = str(uuid.uuid4())[:8]
+    folder_path = f"/Veriquick/{timestamp}_{folder_id}"
+    dbx.files_create_folder_v2(folder_path)
+    file_links = []
+    for file in files:
+        dropbox_path = f"{folder_path}/{file.name}"
+        dbx.files_upload(file.getvalue(), dropbox_path)
+        shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path)
+        file_links.append({
+            "name": file.name,
+            "url": shared_link_metadata.url.replace("?dl=0", "?dl=1")
+        })
+    return file_links
 
 
 
