@@ -2,12 +2,12 @@
 
 ![Screenshot 2025-05-05 205424](https://github.com/user-attachments/assets/397c01a4-47a8-4bf1-bf9b-a79ee5a530c1)
 
-# Veriquick  
+# Veriquick™️
 ### *let's make it quick*
 
 
 
-### Note: If you are using this code for any purpose make sure to credit the author of the application
+### Note: You cannot use any code or frameworkds without prior permission form the author
 > For any queries contact
 > ## Dave
 > + Mail : (dimareznokov@gmail.com)
