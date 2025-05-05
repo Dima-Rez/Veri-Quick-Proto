@@ -307,7 +307,7 @@ def verify_aadhaar_authenticity(aadhaar_number):
 
 # Main Streamlit App
 st.title("Veriquick")
-st.markdown("<h4 style='color:#90caf9;'>Upload your PDF documents for instant verification and secure sharing.</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:#90caf9;'>Let's Make it Quick✅.</h4>", unsafe_allow_html=True)
 
 uploaded_files = st.file_uploader("Upload PDF documents", type="pdf", accept_multiple_files=True)
 
